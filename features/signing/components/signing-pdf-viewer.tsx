@@ -115,7 +115,7 @@ export function SigningPdfViewer({
           ) : (
             <PdfDocument
               file={fileUrl}
-              onLoadSuccess={({ numPages: pages }) => setNumPages(pages)}
+              onLoadSuccess={({ numPages: pages }: { numPages: number }) => setNumPages(pages)}
               loading={<div className="p-6 text-sm text-muted-foreground">Loading PDF...</div>}
               error={<div className="p-6 text-sm text-destructive">Failed to load PDF.</div>}
             >

@@ -9,7 +9,7 @@ import type { PlacedField } from "../types";
 interface FieldOverlayProps {
   field: PlacedField;
   isSelected: boolean;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, width: number, height: number) => void;

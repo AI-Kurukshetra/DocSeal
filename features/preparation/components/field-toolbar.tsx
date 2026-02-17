@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { useCallback, useRef } from "react";
 import { useDrag } from "react-dnd";
 import { cn } from "@/lib/utils";
 import { FIELD_COLORS, FIELD_TYPES, DND_FIELD_ITEM } from "../constants";
@@ -36,10 +37,19 @@ function FieldButton({
 
   const colors = FIELD_COLORS[field.type];
   const Icon = field.icon;
+  const elementRef = useRef<HTMLDivElement>(null);
+
+  const setRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      elementRef.current = node;
+      dragRef(node);
+    },
+    [dragRef],
+  );
 
   return (
     <div
-      ref={dragRef}
+      ref={setRef}
       className={cn(
         "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium cursor-grab",
         colors.border,

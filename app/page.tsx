@@ -10,6 +10,8 @@ async function HomeRedirect() {
 
   if (user) redirect("/dashboard");
   else redirect("/login");
+
+  return null;
 }
 
 export default function Home() {
