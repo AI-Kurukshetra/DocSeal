@@ -1,17 +1,12 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient as createSSRClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-/**
- * Especially important if using Fluid compute: Don't put this client in a
- * global variable. Always create a new client within each function when using
- * it.
- */
-export async function createClient() {
+export async function createServerClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createSSRClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
@@ -24,11 +19,31 @@ export async function createClient() {
             );
           } catch {
             // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have proxy refreshing
-            // user sessions.
+            // This can be ignored if you have middleware refreshing sessions.
           }
         },
       },
     },
   );
+}
+
+// Service role client for admin operations
+export function createServiceClient() {
+  return createSSRClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {},
+      },
+    },
+  );
+}
+
+// Backwards-compatible export for existing code.
+export async function createClient() {
+  return createServerClient();
 }

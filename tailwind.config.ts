@@ -1,16 +1,30 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
   darkMode: ["class"],
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./features/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
   ],
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: "#7C3AED",
+          foreground: "#FFFFFF",
+          50: "#EDE9FE",
+          100: "#DDD6FE",
+          200: "#C4B5FD",
+          300: "#A78BFA",
+          400: "#8B5CF6",
+          500: "#7C3AED",
+          600: "#6D28D9",
+          700: "#5B21B6",
+          800: "#4C1D95",
+          900: "#3B0764",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -60,4 +74,6 @@ export default {
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config;
+};
+
+export default config;
