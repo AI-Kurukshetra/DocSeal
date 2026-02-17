@@ -10,7 +10,9 @@ import { FieldOverlay } from "./field-overlay";
 import type { FieldConfig, PlacedField } from "../types";
 
 type PdfModule = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Document: React.ComponentType<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Page: React.ComponentType<any>;
   pdfjs: { GlobalWorkerOptions: { workerSrc: string } };
 };

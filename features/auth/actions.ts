@@ -64,6 +64,18 @@ export async function forgotPassword(data: ForgotPasswordInput) {
   return { success: "Check your email for a reset link" };
 }
 
+export async function resetPassword(password: string) {
+  if (!password || password.length < 6) {
+    return { error: "Password must be at least 6 characters" };
+  }
+
+  const supabase = await createServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) return { error: error.message };
+  return { success: "Password updated successfully" };
+}
+
 // Helper: get current user profile (for Server Components)
 export async function getCurrentUser() {
   const supabase = await createServerClient();

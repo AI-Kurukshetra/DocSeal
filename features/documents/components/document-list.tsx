@@ -26,7 +26,7 @@ import { useTransition } from "react";
 import type { Document } from "@/types";
 
 export function DocumentList({ documents }: { documents: Document[] }) {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   if (documents.length === 0) {
     return (

@@ -113,7 +113,8 @@ export async function cancelSigningRequest(requestId: string) {
     .eq("id", requestId)
     .single();
 
-  if (!request || (request.document as any)?.sender_id !== user.id) {
+  const doc = request?.document as { sender_id: string } | null;
+  if (!request || doc?.sender_id !== user.id) {
     return { error: "Not authorized" };
   }
 
@@ -171,7 +172,8 @@ export async function resendSigningEmail(requestId: string) {
     .eq("id", requestId)
     .single();
 
-  if (!request || (request.document as any)?.sender_id !== user.id) {
+  const resendDoc = request?.document as { sender_id: string; title: string } | null;
+  if (!request || resendDoc?.sender_id !== user.id) {
     return { error: "Not authorized" };
   }
 
@@ -188,7 +190,7 @@ export async function resendSigningEmail(requestId: string) {
   try {
     await sendSigningEmail({
       to: request.recipient_email,
-      documentTitle: (request.document as any).title,
+      documentTitle: resendDoc?.title ?? "",
       senderName: user.email || "Someone",
       message: request.message || "",
       signingUrl: `${appUrl}/sign/${request.token}`,
@@ -210,8 +212,11 @@ async function sendSigningEmail(params: {
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
 
+  const fromAddress =
+    process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+
   await resend.emails.send({
-    from: "onboarding@resend.dev",
+    from: fromAddress,
     to: params.to,
     subject: `Please sign: ${params.documentTitle}`,
     html: `

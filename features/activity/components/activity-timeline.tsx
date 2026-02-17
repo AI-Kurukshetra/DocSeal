@@ -38,7 +38,9 @@ export function ActivityTimeline({
         <div className="space-y-4">
           {activities.map((entry) => {
             const Icon = ACTION_ICONS[entry.action] || Upload;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const user = entry.user as any;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const doc = entry.document as any;
 
             return (

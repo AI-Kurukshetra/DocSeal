@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
+import type { SigningRequestWithDocument } from "@/types/database.types";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const { allowed } = rateLimit(`get:${ip}:${token}`, 30, 60_000); // 30 req/min per IP per token
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const supabase = createServiceClient();
 
-  const { data: signingRequest, error } = await supabase
+  const { data: rawRequest, error } = await supabase
     .from("signing_requests")
     .select(
       `
@@ -23,7 +33,9 @@ export async function GET(
     .eq("token", token)
     .single();
 
-  if (error || !signingRequest) {
+  const signingRequest = rawRequest as SigningRequestWithDocument | null;
+
+  if (error || !rawRequest || !signingRequest) {
     return NextResponse.json(
       { error: "Invalid signing link" },
       { status: 404 },
@@ -48,7 +60,7 @@ export async function GET(
     );
   }
 
-  const doc = signingRequest.document as any;
+  const doc = signingRequest.document;
   const bucket = doc.converted_pdf_url ? "converted" : "documents";
   const path = doc.converted_pdf_url || doc.file_url;
 
@@ -86,7 +98,7 @@ export async function GET(
       .eq("id", signingRequest.id);
 
     await supabase.from("activity_log").insert({
-      document_id: doc.id,
+      document_id: doc?.id,
       user_id: signingRequest.recipient_id,
       action: "document_viewed",
       metadata: { recipient_email: signingRequest.recipient_email },

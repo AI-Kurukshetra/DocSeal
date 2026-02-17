@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createServiceClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
+import type { SigningRequestWithDocument } from "@/types/database.types";
 
 type SignaturePayload = {
   document_field_id: string;
@@ -41,8 +43,11 @@ async function sendSignedEmail(params: {
     ? `<a href="${params.downloadUrl}" style="color: #7C3AED;">Download signed PDF</a>`
     : "";
 
+  const fromAddress =
+    process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+
   await resend.emails.send({
-    from: "onboarding@resend.dev",
+    from: fromAddress,
     to: params.to,
     subject,
     html: `
@@ -72,19 +77,24 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const { allowed } = rateLimit(`submit:${ip}:${token}`, 5, 60_000); // 5 submissions/min per IP per token
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const supabase = createServiceClient();
 
-  let body: any;
+  let body: { field_values: FieldValuePayload[]; signature_data?: SignaturePayload[] | string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { field_values, signature_data } = body as {
-    field_values: FieldValuePayload[];
-    signature_data?: SignaturePayload[] | string;
-  };
+  const { field_values, signature_data } = body;
 
   const normalizedFieldValues = Array.isArray(field_values)
     ? field_values
@@ -92,7 +102,7 @@ export async function POST(
 
   try {
 
-  const { data: signingRequest } = await supabase
+  const { data: rawSigningRequest } = await supabase
     .from("signing_requests")
     .select(
       `
@@ -111,6 +121,8 @@ export async function POST(
     .eq("token", token)
     .single();
 
+  const signingRequest = rawSigningRequest as SigningRequestWithDocument | null;
+
   if (!signingRequest) {
     return NextResponse.json({ error: "Invalid signing link" }, { status: 404 });
   }
@@ -123,22 +135,12 @@ export async function POST(
     return NextResponse.json({ error: "Request cancelled" }, { status: 410 });
   }
 
-  const doc = signingRequest.document as any;
+  const doc = signingRequest.document;
   if (!doc) {
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
   const recipientEmail = signingRequest.recipient_email.trim().toLowerCase();
-  const fields = (doc.document_fields || []) as Array<{
-    id: string;
-    type: string;
-    label: string;
-    font_size: number;
-    page_number: number;
-    position_x: number;
-    position_y: number;
-    width: number;
-    height: number;
-  }>;
+  const fields = doc.document_fields ?? [];
 
   const normalizedSignaturePayloads: SignaturePayload[] = Array.isArray(
     signature_data,

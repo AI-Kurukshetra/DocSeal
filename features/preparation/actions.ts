@@ -18,6 +18,7 @@ export async function getFields(documentId: string): Promise<DocumentField[]> {
 export async function saveFields(
   documentId: string,
   fields: Array<{
+    db_id?: string; // present if field already exists in DB
     type: DocumentField["type"];
     label: DocumentField["label"];
     placeholder: DocumentField["placeholder"];
@@ -38,24 +39,53 @@ export async function saveFields(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Unauthorized" };
 
-  const { error: deleteError } = await supabase
-    .from("document_fields")
-    .delete()
-    .eq("document_id", documentId);
+  // Separate fields into those being kept/updated vs freshly inserted
+  const incomingDbIds = fields
+    .map((f) => f.db_id)
+    .filter((id): id is string => !!id);
 
-  if (deleteError) return { error: deleteError.message };
+  // Delete only the fields that are no longer in the incoming list
+  if (incomingDbIds.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("document_fields")
+      .delete()
+      .eq("document_id", documentId)
+      .not("id", "in", `(${incomingDbIds.join(",")})`);
+
+    if (deleteError) return { error: deleteError.message };
+  } else {
+    // No fields have a db_id — delete all existing ones for this document
+    const { error: deleteError } = await supabase
+      .from("document_fields")
+      .delete()
+      .eq("document_id", documentId);
+
+    if (deleteError) return { error: deleteError.message };
+  }
 
   if (fields.length > 0) {
-    const { error: insertError } = await supabase
-      .from("document_fields")
-      .insert(
-        fields.map((field) => ({
-          ...field,
-          document_id: documentId,
-        })),
-      );
+    const toUpsert = fields.map((field) => ({
+      ...(field.db_id ? { id: field.db_id } : {}),
+      document_id: documentId,
+      type: field.type,
+      label: field.label,
+      placeholder: field.placeholder,
+      required: field.required,
+      validation: field.validation,
+      font_size: field.font_size,
+      page_number: field.page_number,
+      position_x: field.position_x,
+      position_y: field.position_y,
+      width: field.width,
+      height: field.height,
+      options: field.options,
+    }));
 
-    if (insertError) return { error: insertError.message };
+    const { error: upsertError } = await supabase
+      .from("document_fields")
+      .upsert(toUpsert, { onConflict: "id" });
+
+    if (upsertError) return { error: upsertError.message };
   }
 
   await supabase.from("activity_log").insert({

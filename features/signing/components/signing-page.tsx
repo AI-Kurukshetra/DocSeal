@@ -177,7 +177,7 @@ export function SigningPage({
       {request.message && (
         <div className="bg-primary-50 px-6 py-3">
           <p className="max-w-5xl mx-auto text-sm text-primary">
-            "{request.message}"
+            &quot;{request.message}&quot;
           </p>
         </div>
       )}

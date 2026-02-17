@@ -103,6 +103,7 @@ export function PrepareEditor({
       const result = await saveFields(
         document.id,
         fields.map((f) => ({
+          db_id: f.db_id,
           type: f.type,
           label: f.label,
           placeholder: f.placeholder || null,
