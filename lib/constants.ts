@@ -1,6 +1,6 @@
 import {
   FileText,
-  Upload,
+  FilePlus,
   Users,
   Activity,
   PenTool,
@@ -20,7 +20,7 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
   sender: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "My Documents", href: "/dashboard/documents", icon: FileText },
-    { label: "Upload Document", href: "/dashboard/upload", icon: Upload },
+    { label: "New Signing Request", href: "/dashboard/upload", icon: FilePlus },
   ],
   recipient: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
