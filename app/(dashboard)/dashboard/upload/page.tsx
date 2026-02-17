@@ -1,5 +1,5 @@
-import { UploadForm } from "@/features/documents/components/upload-form";
+import { UploadWizard } from "@/features/documents/components/upload-wizard";
 
 export default function UploadPage() {
-  return <UploadForm />;
+  return <UploadWizard />;
 }

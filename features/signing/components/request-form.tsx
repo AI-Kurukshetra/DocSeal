@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, Copy, Link2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Plus, Trash2, Copy, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,9 +23,11 @@ import type { Document } from "@/types";
 
 interface RequestFormProps {
   document: Document;
+  wizardMode?: boolean;
+  onBack?: () => void;
 }
 
-export function RequestForm({ document }: RequestFormProps) {
+export function RequestForm({ document, wizardMode, onBack }: RequestFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [signingLinks, setSigningLinks] = useState<
@@ -65,6 +67,54 @@ export function RequestForm({ document }: RequestFormProps) {
   function copyLink(url: string) {
     navigator.clipboard.writeText(url);
     toast.success("Link copied to clipboard");
+  }
+
+  // Wizard mode: show signing links inline instead of in a dialog
+  if (wizardMode && signingLinks) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle2 className="h-6 w-6 text-green-600" />
+          </div>
+          <CardTitle>Signing Requests Sent!</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {emailsSent
+              ? "Emails have been sent. You can also share these links directly:"
+              : "Share these links with your recipients:"}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {signingLinks.map((link) => (
+            <div
+              key={link.email}
+              className="flex items-center gap-2 p-3 border rounded-lg"
+            >
+              <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{link.email}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {link.url}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyLink(link.url)}
+              >
+                <Copy className="h-3 w-3 mr-1" /> Copy
+              </Button>
+            </div>
+          ))}
+          <Button
+            className="w-full mt-4"
+            onClick={() => router.push(`/dashboard/documents/${document.id}`)}
+          >
+            View Document
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -131,9 +181,22 @@ export function RequestForm({ document }: RequestFormProps) {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? "Sending..." : "Send Signing Request"}
-            </Button>
+            <div className="flex gap-2">
+              {wizardMode && onBack && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onBack}
+                  disabled={isPending}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              )}
+              <Button type="submit" className="flex-1" disabled={isPending}>
+                {isPending ? "Sending..." : "Send Signing Request"}
+              </Button>
+            </div>
           </CardContent>
         </form>
       </Card>

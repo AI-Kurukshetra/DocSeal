@@ -12,6 +12,8 @@ import {
   Send,
   Clock,
   CheckCircle2,
+  Download,
+  MailPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ACTIVITY_LABELS } from "@/lib/constants";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
-import { cancelSigningRequest } from "@/features/signing/actions";
+import { cancelSigningRequest, resendSigningEmail } from "@/features/signing/actions";
+import { getSignedPdfUrl } from "../actions";
 import type { Document, ActivityLogEntry, SigningRequest } from "@/types";
 
 interface DocumentDetailProps {
@@ -72,6 +75,22 @@ export function DocumentDetail({ document, activity }: DocumentDetailProps) {
     });
   }
 
+  function handleResend(requestId: string) {
+    startTransition(async () => {
+      const result = await resendSigningEmail(requestId);
+      if (result.error) toast.error(result.error);
+      else toast.success("Email resent successfully");
+    });
+  }
+
+  function handleDownload(signedFileUrl: string) {
+    startTransition(async () => {
+      const result = await getSignedPdfUrl(signedFileUrl);
+      if (result.error) toast.error(result.error);
+      else if (result.url) window.open(result.url, "_blank");
+    });
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -94,12 +113,14 @@ export function DocumentDetail({ document, activity }: DocumentDetailProps) {
               Prepare
             </Link>
           </Button>
-          <Button asChild>
-            <Link href={`/dashboard/documents/${document.id}/request`}>
-              <Send className="h-4 w-4 mr-2" />
-              Send for Signing
-            </Link>
-          </Button>
+          {document.status === "draft" && (
+            <Button asChild>
+              <Link href={`/dashboard/documents/${document.id}/request`}>
+                <Send className="h-4 w-4 mr-2" />
+                Send for Signing
+              </Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -146,6 +167,31 @@ export function DocumentDetail({ document, activity }: DocumentDetailProps) {
                             <Copy className="h-3 w-3 mr-1" />
                             Copy Link
                           </Button>
+                          {(req.status === "pending" ||
+                            req.status === "viewed") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResend(req.id)}
+                              disabled={isPending}
+                            >
+                              <MailPlus className="h-3 w-3 mr-1" />
+                              Resend
+                            </Button>
+                          )}
+                          {req.status === "signed" && req.signed_file_url && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleDownload(req.signed_file_url!)
+                              }
+                              disabled={isPending}
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              Download
+                            </Button>
+                          )}
                           {req.status === "pending" && (
                             <Button
                               variant="ghost"

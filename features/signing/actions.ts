@@ -158,6 +158,48 @@ export async function getRecipientSigningRequests() {
   return (data as SigningRequest[]) || [];
 }
 
+export async function resendSigningEmail(requestId: string) {
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: request } = await supabase
+    .from("signing_requests")
+    .select("*, document:documents(id, title, sender_id)")
+    .eq("id", requestId)
+    .single();
+
+  if (!request || (request.document as any)?.sender_id !== user.id) {
+    return { error: "Not authorized" };
+  }
+
+  if (request.status !== "pending" && request.status !== "viewed") {
+    return { error: "Can only resend email for pending or viewed requests" };
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    return { error: "Email not configured" };
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  try {
+    await sendSigningEmail({
+      to: request.recipient_email,
+      documentTitle: (request.document as any).title,
+      senderName: user.email || "Someone",
+      message: request.message || "",
+      signingUrl: `${appUrl}/sign/${request.token}`,
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to resend email", err);
+    return { error: "Failed to send email" };
+  }
+}
+
 async function sendSigningEmail(params: {
   to: string;
   documentTitle: string;

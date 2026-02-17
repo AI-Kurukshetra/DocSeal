@@ -74,7 +74,13 @@ export async function POST(
   const { token } = await params;
   const supabase = createServiceClient();
 
-  const body = await request.json();
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { field_values, signature_data } = body as {
     field_values: FieldValuePayload[];
     signature_data?: SignaturePayload[] | string;
@@ -83,6 +89,8 @@ export async function POST(
   const normalizedFieldValues = Array.isArray(field_values)
     ? field_values
     : [];
+
+  try {
 
   const { data: signingRequest } = await supabase
     .from("signing_requests")
@@ -123,6 +131,7 @@ export async function POST(
   const fields = (doc.document_fields || []) as Array<{
     id: string;
     type: string;
+    label: string;
     font_size: number;
     page_number: number;
     position_x: number;
@@ -306,15 +315,46 @@ export async function POST(
       }
       case "checkbox": {
         if (value !== "true") break;
-        const checkSize = clamp(Math.min(boxWidth, boxHeight) * 0.8, 10, 24);
-        const textWidth = font.widthOfTextAtSize("✓", checkSize);
-        page.drawText("✓", {
-          x: x + (boxWidth - textWidth) / 2,
-          y: y + (boxHeight - checkSize) / 2,
-          size: checkSize,
-          font,
+        const cbSize = clamp(field.font_size || 12, 8, 18);
+        const cbX = x + 2;
+        const cbY = y + (boxHeight - cbSize) / 2;
+        // Draw checkbox border
+        page.drawRectangle({
+          x: cbX,
+          y: cbY,
+          width: cbSize,
+          height: cbSize,
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 1,
+          color: rgb(1, 1, 1),
+        });
+        // Draw checkmark lines inside the box
+        const inset = cbSize * 0.2;
+        const lw = clamp(cbSize * 0.12, 0.8, 2);
+        page.drawLine({
+          start: { x: cbX + inset, y: cbY + cbSize * 0.5 },
+          end: { x: cbX + cbSize * 0.4, y: cbY + inset },
+          thickness: lw,
           color: rgb(0, 0, 0),
         });
+        page.drawLine({
+          start: { x: cbX + cbSize * 0.4, y: cbY + inset },
+          end: { x: cbX + cbSize - inset, y: cbY + cbSize - inset },
+          thickness: lw,
+          color: rgb(0, 0, 0),
+        });
+        // Draw label text next to checkbox
+        if (field.label) {
+          const labelSize = clamp(field.font_size || 10, 8, 16);
+          page.drawText(field.label, {
+            x: cbX + cbSize + 4,
+            y: cbY + (cbSize - labelSize) / 2,
+            size: labelSize,
+            font,
+            color: rgb(0, 0, 0),
+            maxWidth: Math.max(boxWidth - cbSize - 8, 0),
+          });
+        }
         break;
       }
       case "signature":
@@ -424,4 +464,12 @@ export async function POST(
   }
 
   return NextResponse.json({ success: true });
+
+  } catch (err) {
+    console.error("Signing submit error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 },
+    );
+  }
 }

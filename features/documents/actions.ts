@@ -103,6 +103,23 @@ export async function deleteDocument(id: string) {
   return { success: true };
 }
 
+export async function getSignedPdfUrl(
+  filePath: string,
+): Promise<{ url?: string; error?: string }> {
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data, error } = await supabase.storage
+    .from("signed")
+    .createSignedUrl(filePath, 60);
+
+  if (error) return { error: error.message };
+  return { url: data.signedUrl };
+}
+
 export async function getDocumentStats() {
   const supabase = await createServerClient();
   const {

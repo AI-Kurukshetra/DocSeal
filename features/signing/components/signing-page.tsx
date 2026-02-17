@@ -131,8 +131,14 @@ export function SigningPage({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Submission failed");
+        let message = "Submission failed";
+        try {
+          const data = await res.json();
+          message = data.error || message;
+        } catch {
+          // Response was not JSON
+        }
+        throw new Error(message);
       }
 
       setCompleted(true);

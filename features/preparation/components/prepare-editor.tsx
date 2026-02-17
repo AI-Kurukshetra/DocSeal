@@ -6,7 +6,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Save, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Send } from "lucide-react";
 import { FieldToolbar } from "./field-toolbar";
 import { PdfCanvas } from "./pdf-canvas";
 import { PropertiesPanel } from "./properties-panel";
@@ -18,12 +18,18 @@ interface PrepareEditorProps {
   document: Document;
   existingFields: DocumentField[];
   fileUrl: string;
+  wizardMode?: boolean;
+  onWizardComplete?: () => void;
+  onWizardBack?: () => void;
 }
 
 export function PrepareEditor({
   document,
   existingFields,
   fileUrl,
+  wizardMode,
+  onWizardComplete,
+  onWizardBack,
 }: PrepareEditorProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -117,7 +123,11 @@ export function PrepareEditor({
       } else {
         toast.success("Fields saved");
         if (andContinue) {
-          router.push(`/dashboard/documents/${document.id}/request`);
+          if (wizardMode && onWizardComplete) {
+            onWizardComplete();
+          } else {
+            router.push(`/dashboard/documents/${document.id}/request`);
+          }
         }
       }
     });
@@ -149,18 +159,37 @@ export function PrepareEditor({
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleSave(false)}
-              disabled={isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isPending ? "Saving..." : "Save Draft"}
-            </Button>
-            <Button onClick={() => handleSave(true)} disabled={isPending}>
-              <Send className="h-4 w-4 mr-2" />
-              Continue to Send
-            </Button>
+            {wizardMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={onWizardBack}
+                  disabled={isPending}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Button onClick={() => handleSave(true)} disabled={isPending}>
+                  {isPending ? "Saving..." : "Next: Add Recipients"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleSave(false)}
+                  disabled={isPending}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {isPending ? "Saving..." : "Save Draft"}
+                </Button>
+                <Button onClick={() => handleSave(true)} disabled={isPending}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Continue to Send
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
