@@ -1,109 +1,365 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# DocSeal — Document Signing Platform
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+A full-featured document e-signing platform built with **Next.js 15 (App Router)** and **Supabase**. Upload PDFs, drag-and-drop signature fields, send signing requests via email, and receive signed PDFs — end to end.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+**Live Demo:** [doc-seal.vercel.app](https://doc-seal.vercel.app)
+
+---
 
 ## Features
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+- **Role-based access** — three roles: `sender`, `recipient`, `admin`
+- **Upload & convert** — PDF upload (up to 10 MB); doc/docx conversion to PDF via Mammoth + pdf-lib
+- **Visual field placement** — drag-and-drop signature, text, date, checkbox, initials, and dropdown fields onto PDF pages (react-dnd)
+- **Tokenized signing links** — unique secure tokens per recipient; no login required to sign
+- **Signature pad** — freehand signature drawing (react-signature-canvas) with reuse across sessions
+- **PDF embedding** — submitted field values embedded into the PDF with pdf-lib; signed PDF stored in Supabase Storage
+- **Email notifications** — signing invitations and signed-PDF delivery via Resend
+- **Activity timeline** — full audit log of every document event
+- **Admin panel** — user management and platform-wide document/activity visibility
+- **Row Level Security** — all tables protected by Supabase RLS policies
+- **Dark mode ready** — Tailwind CSS `class` strategy + next-themes
 
-## Demo
+---
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+## Tech Stack
 
-## Deploy to Vercel
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router, React 19) |
+| Auth & Database | Supabase (PostgreSQL + GoTrue) |
+| Storage | Supabase Storage (4 private buckets) |
+| Styling | Tailwind CSS 3 + shadcn/ui (new-york) |
+| Forms | react-hook-form + zod |
+| PDF rendering | react-pdf |
+| PDF manipulation | pdf-lib |
+| Doc conversion | mammoth |
+| Drag-and-drop | react-dnd |
+| Signature pad | react-signature-canvas |
+| Email | Resend |
+| Toasts | sonner |
+| Icons | lucide-react |
+| Type safety | TypeScript 5 |
 
-Vercel deployment will guide you through creating a Supabase account and project.
+---
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+## Architecture
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+### Request Flow
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+```
+Browser Request
+      │
+      ▼
+middleware.ts (proxy.ts entry)
+      │
+      ▼
+lib/supabase/middleware.ts
+  ├── Creates per-request Supabase client
+  ├── Refreshes session via getUser()
+  └── Enforces auth (redirects unauthenticated users)
+      │
+      ├── Public routes (no auth): /login  /register  /forgot-password  /sign/*  /api/sign/*
+      │
+      └── Protected routes → App Router handlers
+```
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+### Route Groups
 
-## Clone and run locally
+```
+app/
+├── (auth)/                      # Centered auth layout
+│   ├── login/
+│   ├── register/
+│   ├── forgot-password/
+│   └── reset-password/
+│
+├── (dashboard)/                 # DashboardShell (sidebar + topbar + mobile nav)
+│   └── dashboard/
+│       ├── page.tsx             # Role-aware home dashboard
+│       ├── documents/
+│       │   ├── page.tsx         # Document list
+│       │   ├── [id]/page.tsx    # Document detail
+│       │   ├── [id]/prepare/    # Field placement editor
+│       │   └── [id]/request/    # Send signing request
+│       ├── upload/              # Upload wizard (sender)
+│       ├── signing/             # Pending signing requests (recipient)
+│       ├── activity/            # Activity timeline (admin)
+│       └── users/               # User management (admin)
+│
+├── sign/[token]/                # Public signing page (no auth)
+│
+└── api/
+    ├── convert/                 # doc/docx → PDF
+    └── sign/[token]/
+        ├── route.ts             # GET signing request data
+        └── submit/route.ts      # POST submit signed fields
+```
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+### Feature Modules
 
-2. Create a Next.js app using the Supabase Starter template npx command
+All business logic lives in `features/<name>/`:
+
+```
+features/
+├── activity/
+│   ├── actions.ts
+│   └── components/activity-timeline.tsx
+├── admin/
+│   ├── actions.ts
+│   └── components/ (admin-dashboard, user-table)
+├── auth/
+│   ├── actions.ts
+│   ├── schemas.ts
+│   └── components/ (login-form, register-form, forgot-password-form, reset-password-form)
+├── documents/
+│   ├── actions.ts
+│   ├── schemas.ts
+│   └── components/ (document-list, document-detail, sender-dashboard, upload-dropzone, upload-wizard)
+├── preparation/
+│   ├── actions.ts
+│   ├── constants.ts
+│   ├── types.ts
+│   └── components/ (prepare-editor, pdf-canvas, field-overlay, field-toolbar, properties-panel)
+└── signing/
+    ├── actions.ts
+    ├── schemas.ts
+    ├── types.ts
+    └── components/ (signing-page, signing-token-page, signing-pdf-viewer, field-renderer,
+                     signature-pad, request-form, recipient-dashboard,
+                     signing-success, signing-error)
+```
+
+---
+
+## Document Signing Workflow
+
+```
+[Sender] Upload PDF
+      │
+      ▼
+[Sender] Prepare — drag-and-drop fields onto PDF pages
+      │  (signature, text, date, checkbox, initials, dropdown)
+      ▼
+[Sender] Send — create signing_request with unique token
+      │          optionally email recipient via Resend
+      ▼
+[Recipient] Clicks link → /sign/<token>  (no login required)
+      │  Views PDF, fills all fields, draws signature
+      ▼
+POST /api/sign/<token>/submit
+      │  ┌─ Validates fields
+      │  ├─ Embeds values into PDF with pdf-lib
+      │  ├─ Stores signed PDF in `signed` bucket
+      │  ├─ Saves field_values rows
+      │  └─ Emails signed PDF to sender + signer (Resend)
+      ▼
+Document status → "signed" / "completed"
+Activity log updated throughout every step
+```
+
+---
+
+## Database Schema
+
+```
+auth.users (Supabase managed)
+      │
+      │ trigger: handle_new_user
+      ▼
+profiles
+  id, email, full_name, role (sender|recipient|admin), avatar_url
+
+documents
+  id, title, file_url, file_type, converted_pdf_url,
+  status (draft|pending|signed|completed), sender_id → profiles
+
+document_fields
+  id, document_id → documents,
+  type (signature|text|date|checkbox|initials|dropdown),
+  label, placeholder, required, validation,
+  font_size, page_number, position_x, position_y, width, height, options[]
+
+signing_requests
+  id, document_id → documents,
+  recipient_email, recipient_id → profiles,
+  token (unique), status (pending|viewed|signed|cancelled|declined),
+  signature_url, signed_file_url, signed_at, message
+
+field_values
+  id, signing_request_id → signing_requests,
+  document_field_id → document_fields, value
+
+activity_log
+  id, document_id → documents,
+  user_id → profiles, action, metadata (jsonb)
+
+recipient_signatures
+  (saved signatures per email for reuse across sessions)
+```
+
+### Storage Buckets
+
+| Bucket | Contents |
+|---|---|
+| `documents` | Uploaded raw files |
+| `converted` | PDFs converted from doc/docx |
+| `signatures` | Signature images from signing |
+| `signed` | Completed signed PDFs |
+
+All buckets are **private** — served via time-limited `createSignedUrl()`, never direct public URLs.
+
+---
+
+## Supabase Clients
+
+| File | Context | Client |
+|---|---|---|
+| `lib/supabase/client.ts` | Browser / Client Components | `createBrowserClient` |
+| `lib/supabase/server.ts` | Server Components, Actions, Route Handlers | `createServerClient()` (cookie-based session) |
+| `lib/supabase/server.ts` | API routes that bypass RLS | `createServiceClient()` (service role) |
+
+---
+
+## Role-Based Navigation
+
+| Role | Pages |
+|---|---|
+| `sender` | Dashboard, My Documents, New Signing Request |
+| `recipient` | Dashboard, Signing (pending requests) |
+| `admin` | Dashboard, All Documents, Users, Activity Log |
+
+---
+
+## Project Structure
+
+```
+with-supabase-app/
+├── app/                    # Next.js App Router pages & API routes
+├── components/
+│   ├── layout/             # dashboard-shell, sidebar, topbar, mobile-nav
+│   ├── shared/             # empty-state, status-badge
+│   └── ui/                 # shadcn/ui primitives
+├── features/               # Feature modules (see above)
+├── lib/
+│   ├── constants.ts        # NAV_ITEMS, STATUS_COLORS, ACTIVITY_LABELS, file limits
+│   ├── rate-limit.ts       # Simple in-memory rate limiter
+│   ├── utils.ts            # cn, formatDate, formatRelativeTime, getInitials
+│   └── supabase/           # client, server, middleware helpers
+├── supabase/
+│   └── migrations/         # SQL migration files
+├── types/
+│   ├── index.ts            # All shared TypeScript types
+│   └── database.types.ts   # Supabase generated types
+├── middleware.ts            # Next.js middleware entry (proxy.ts)
+├── next.config.ts
+├── tailwind.config.ts
+└── components.json         # shadcn/ui config
+```
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 18+
+- A [Supabase project](https://database.new) (or local Supabase via `supabase start`)
+- (Optional) A [Resend](https://resend.com) account for email
+
+### Setup
+
+1. Clone the repository and install dependencies:
 
    ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
-
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
-
-3. Use `cd` to change into the app's directory
-
-   ```bash
+   git clone <repo-url>
    cd with-supabase-app
+   npm install
    ```
 
-4. Rename `.env.example` to `.env.local` and update the following:
+2. Copy the environment example and fill in your values:
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+   ```bash
+   cp .env.example .env.local
+   ```
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+   SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   RESEND_API_KEY=<your-resend-api-key>   # optional
+   ```
 
-5. You can now run the Next.js local development server:
+3. Apply database migrations to your Supabase project:
+
+   ```bash
+   supabase db push
+   # or via the Supabase dashboard SQL editor
+   ```
+
+4. Start the development server:
 
    ```bash
    npm run dev
    ```
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+   The app runs at [localhost:3000](http://localhost:3000).
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+### Available Commands
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+```bash
+npm run dev            # Start development server (Turbopack)
+npm run build          # Production build
+npm run start          # Start production server
+npm run lint           # Run ESLint
+npm run tsc:typecheck  # TypeScript type checking (no emit)
+```
 
-## Feedback and issues
+---
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+## Key Patterns
 
-## More Supabase examples
+- **Import alias** — always `@/` (maps to project root)
+- **Forms** — `react-hook-form` + `zodResolver` in Client Components, calling Server Actions via `useTransition()`
+- **Server Actions** — validate with Zod, check auth, mutate DB, call `revalidatePath()`
+- **Toasts** — `sonner`; `<Toaster>` is in root layout
+- **Rate limiting** — `lib/rate-limit.ts` guards API submission endpoints
+- **UI components** — shadcn/ui (new-york style) in `components/ui/`
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+---
+
+## Future Scope
+
+### Near-term
+
+- [ ] **Multi-recipient signing** — sequential or parallel signing order per document
+- [ ] **Signing templates** — save field layouts as reusable templates
+- [ ] **Document expiry** — auto-expire signing requests after N days
+- [ ] **Decline / re-request flow** — recipients can decline with a reason; senders can re-send
+- [ ] **Bulk send** — send one document to many recipients at once
+
+### Mid-term
+
+- [ ] **Audit certificate** — downloadable PDF audit trail with timestamps and IP addresses
+- [ ] **In-app notifications** — real-time bell notifications via Supabase Realtime
+- [ ] **Signer authentication** — optional OTP or SSO verification before signing
+- [ ] **Webhook support** — POST to external URLs on document signed / completed events
+- [ ] **Folder / workspace organization** — group documents into projects or folders
+- [ ] **Custom branding** — logo and color overrides per organization
+
+### Long-term
+
+- [ ] **Team / organization accounts** — multi-user sender teams with shared document access
+- [ ] **API access** — REST/GraphQL API with API keys for programmatic document creation
+- [ ] **Integrations** — Google Drive, Dropbox, Slack, Zapier connectors
+- [ ] **Annotation tools** — comments and markup on documents before sending
+- [ ] **Mobile app** — React Native or PWA for on-the-go signing
+- [ ] **Advanced compliance** — eIDAS / ESIGN Act qualified signatures, long-term validation (LTV)
+- [ ] **AI field detection** — auto-detect signature and form fields from uploaded documents
+
+---
+
+## Feedback & Issues
+
+Please file bugs and feature requests on the project issue tracker.
