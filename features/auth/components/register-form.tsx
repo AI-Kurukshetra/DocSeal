@@ -9,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Card,
   CardContent,
   CardDescription,
@@ -30,7 +23,7 @@ export function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { full_name: "", email: "", password: "", role: "sender" },
+    defaultValues: { full_name: "", email: "", password: "" },
   });
 
   function onSubmit(data: RegisterInput) {
@@ -88,30 +81,6 @@ export function RegisterForm() {
             {form.formState.errors.password && (
               <p className="text-sm text-destructive">
                 {form.formState.errors.password.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>I want to</Label>
-            <Select
-              value={form.watch("role")}
-              onValueChange={(value) =>
-                form.setValue("role", value as "sender" | "recipient")
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select your role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sender">
-                  Send documents for signing
-                </SelectItem>
-                <SelectItem value="recipient">Sign documents</SelectItem>
-              </SelectContent>
-            </Select>
-            {form.formState.errors.role && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.role.message}
               </p>
             )}
           </div>

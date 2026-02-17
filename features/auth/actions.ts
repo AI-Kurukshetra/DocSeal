@@ -34,7 +34,6 @@ export async function register(data: RegisterInput) {
     options: {
       data: {
         full_name: parsed.data.full_name,
-        role: parsed.data.role,
       },
     },
   });
