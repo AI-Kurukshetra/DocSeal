@@ -212,7 +212,7 @@ export function RequestForm({ document, wizardMode, onBack }: RequestFormProps) 
           <DialogHeader>
             <DialogTitle>Signing Links</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             <p className="text-sm text-muted-foreground">
               {emailsSent
                 ? "Emails have been sent. You can also share these links directly:"
